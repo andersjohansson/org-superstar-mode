@@ -522,16 +522,21 @@ the current keyword, return nil."
   (when-let* ((todo-kw
                (org-superstar--get-todo (match-beginning 0)))
               (todo-bullet
-               (cdr (org-superstar--todo-assoc todo-kw))))
-    (cond
-     ((characterp todo-bullet)
-      todo-bullet)
-     ((listp todo-bullet)
-      (let ((todo-fallback (cadr todo-bullet))
-            (todo-bullet (car todo-bullet)))
-        (if (org-superstar-graphic-p)
-            todo-bullet
-          todo-fallback))))))
+               (cdr (org-superstar--todo-assoc todo-kw)))
+              (todo-face (org-get-todo-face todo-kw)))
+    (when todo-bullet
+      (propertize
+       (char-to-string
+        (cond
+         ((characterp todo-bullet)
+          todo-bullet)
+         ((listp todo-bullet)
+          (let ((todo-fallback (cadr todo-bullet))
+                (todo-bullet (car todo-bullet)))
+            (if (org-superstar-graphic-p)
+                todo-bullet
+              todo-fallback)))))
+       'face todo-face))))
 
 (defun org-superstar--hbullets-length ()
   "Return the length of ‘org-superstar-headline-bullets-list’."
@@ -562,7 +567,7 @@ See also ‘org-superstar-cycle-headline-bullets’."
            (unless (eq org-superstar-special-todo-items 'hide)
              todo-bullet))
           ((integerp max-bullets)
-           (org-superstar--nth-headline-bullet (% n max-bullets)))
+           ((org-superstar--nth-headline-bullet (% n max-bullets))))
           (max-bullets
            (org-superstar--nth-headline-bullet
             (% n (org-superstar--hbullets-length))))
@@ -576,20 +581,21 @@ N counts from zero.  Headline bullets are specified in
 ‘org-superstar-headline-bullets-list’."
   (let ((bullet-entry
          (elt org-superstar-headline-bullets-list n)))
-    (cond
-     ((characterp bullet-entry)
-      bullet-entry)
-     ;; Strip bullets provided as strings down to their first char.
-     ;; The main reason hbullets can be defined using strings is
-     ;; because org-bullets did it.
-     ((stringp bullet-entry)
-      (string-to-char bullet-entry))
-     ;; If the element is a cons, assume the user knows what they are
-     ;; doing.
-     ((org-superstar-graphic-p)
-      (elt bullet-entry 0))
-     (t
-      (elt bullet-entry 1)))))
+    (char-to-string
+     (cond
+      ((characterp bullet-entry)
+       bullet-entry)
+      ;; Strip bullets provided as strings down to their first char.
+      ;; The main reason hbullets can be defined using strings is
+      ;; because org-bullets did it.
+      ((stringp bullet-entry)
+       (string-to-char bullet-entry))
+      ;; If the element is a cons, assume the user knows what they are
+      ;; doing.
+      ((org-superstar-graphic-p)
+       (elt bullet-entry 0))
+      (t
+       (elt bullet-entry 1))))))
 
 (defun org-superstar--ibullet (bullet-string)
   "Return BULLET-STRINGs desired UTF-8 replacement.
@@ -685,8 +691,11 @@ prettifying bullets in (for example) source blocks."
   (when (org-superstar-headline-or-inlinetask-p)
     (let ((bullet (org-superstar--hbullet (org-superstar--heading-level))))
       (if bullet
-          (compose-region (match-beginning 1) (match-end 1)
-                          bullet)
+          (add-text-properties
+           (match-beginning 1) (match-end 1)
+           (list 'display bullet))
+        ;; (compose-region
+        ;;  bullet)
         (org-superstar--make-invisible 1)))
     'org-superstar-header-bullet))
 
